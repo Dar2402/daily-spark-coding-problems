@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SqlDialectMappings">
+    <file url="file://$PROJECT_DIR$/notebooks/problem-19-08-2025/19-08-2025.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/notebooks/problem-20-08-2025/20-08-2025.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/notebooks/problem-21-08-2025/21-08-2025.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/notebooks/problem-22-08-2025/22-08-2025.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/notebooks/problem-23-08-2025/23-08-2025.sql" dialect="GenericSQL" />
+    <file url="PROJECT" dialect="PostgreSQL" />
+  </component>
+</project>
