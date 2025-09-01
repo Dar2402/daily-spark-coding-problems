@@ -1,19 +1,21 @@
 services:
   spark-jupyter:
-    image: easewithdata/pyspark-jupyter-lab
+    build:
+      context: .
+      dockerfile: ./utils/dockerfiles/Dockerfile
     user: root
     container_name: spark-jupyter-notebook
     ports:
-      - 8889:8889
-      - 4041:4041
+      - "${JUPYTER_PORT:-8889}:${JUPYTER_PORT:-8889}"
+      - "${SPARK_UI_PORT:-4041}:${SPARK_UI_PORT:-4041}"
     environment:
       JUPYTER_PORT: 8889
       SPARK_UI_PORT: 4041
       GRANT_SUDO: yes
     volumes:
-    - ./notebooks:/home/jupyter/work/notebooks
-    - ./data:/home/jupyter/work/data
-    - ./utils:/home/jupyter/work/utils
+      - ./notebooks:/home/jupyter/work/notebooks
+      - ./data:/home/jupyter/work/data
+      - ./utils:/home/jupyter/work/utils
     networks:
       - spark_network
 
