@@ -1,51 +1,93 @@
-## **Problem: Advanced User Session Analytics**
+## **Problem Scenario: IoT Sensor Data Monitoring**
 
-A user login website tracks detailed user activities across sessions. For each user per day, you need to calculate:
+### **Background**
 
-1. **Number of Logins** – Count of login events per day.
-2. **Session Times** – Duration of each session (between login and logout) per day.
-3. **Total Usage Time** – Sum of all session durations per day.
-4. **Average Usage Time** – Average session duration per day.
-5. **Most Used Device** – Device used most frequently per day.
-6. **Top Location** – Location from where the user accessed most events per day.
-7. **Unique Browsers** – Count of distinct browsers used per day.
-8. **Event Counts** – Count of each event type per day (stored separately).
+You work for a company that operates **smart warehouses** equipped with **IoT temperature and humidity sensors** in multiple locations worldwide. These sensors send readings every few minutes to a central data pipeline.
 
-### **Additional Notes**
+However, the raw data is messy:
 
-* Events belong to different sessions identified by `session_id`.
-* A session starts at `login` and ends at `logout`. If no `logout`, assume session ends at **23:59:59** for that day.
-* Event types include: `login`, `logout`, `click`, `view`, `purchase`.
+* Some readings are missing or delayed.
+* Multiple sensors sometimes report at the same timestamp.
+* Occasionally, sensors malfunction and send outlier readings (e.g., -100°C).
+
+Your team needs **daily aggregated metrics** to monitor warehouse conditions and ensure compliance with safety regulations.
 
 ---
 
-## **Sample Input from CSV file (Simplified)**
+### **Data Generation Requirements**
 
-| user\_id | event\_time         | event\_type | device  | location | browser | session\_id |
-| -------- | ------------------- | ----------- | ------- | -------- | ------- | ----------- |
-| U1       | 2025-08-27 09:00:00 | login       | mobile  | India    | Chrome  | S101        |
-| U1       | 2025-08-27 09:15:00 | click       | mobile  | India    | Chrome  | S101        |
-| U1       | 2025-08-27 09:45:00 | logout      | mobile  | India    | Chrome  | S101        |
-| U2       | 2025-08-27 10:00:00 | login       | desktop | USA      | Firefox | S202        |
-| U2       | 2025-08-27 10:30:00 | view        | desktop | USA      | Firefox | S202        |
-| U2       | 2025-08-27 11:00:00 | logout      | desktop | USA      | Firefox | S202        |
+* **CSV with at least 1000 rows**
+* 50+ unique **warehouse locations**
+* Columns:
 
----
-
-## **Expected Output 1: Main Metrics**
-
-| user\_id | date       | num\_logins | session\_times(mins) | total\_usage(mins) | avg\_usage(mins) | most\_device | top\_location | unique\_browsers |
-| -------- | ---------- | ----------- | -------------------- | ------------------ | ---------------- | ------------ | ------------- | ---------------- |
-| U1       | 2025-08-27 | 1           | \[45]                | 45                 | 45.0             | mobile       | India         | 1                |
-| U2       | 2025-08-27 | 1           | \[60]                | 60                 | 60.0             | desktop      | USA           | 1                |
+  * `sensor_id`
+  * `warehouse_id`
+  * `timestamp`
+  * `temperature` (°C)
+  * `humidity` (%)
+  * `battery_level` (%)
+  * `status` (OK, MALFUNCTION)
+* Edge cases: missing readings, outlier values, multiple readings at same timestamp
 
 ---
 
-## **Expected Output 2: Event Counts (Separate Table)**
+## **Problem Definition**
 
-| user\_id | date       | login\_count | logout\_count | click\_count | view\_count | purchase\_count |
-| -------- | ---------- | ------------ | ------------- | ------------ | ----------- | --------------- |
-| U1       | 2025-08-27 | 1            | 1             | 1            | 0           | 0               |
-| U2       | 2025-08-27 | 1            | 1             | 0            | 1           | 0               |
+You need to process the IoT sensor data using **PySpark** to generate:
+
+1. **Daily metrics per warehouse**
+
+   * Average, min, max temperature and humidity
+   * Percentage of malfunctioning sensors
+   * Count of missing readings (gaps > 15 min)
+   * Average battery level
+
+2. **Outlier Detection Table**
+
+   * Identify sensors with extreme values (e.g., temp < -20°C or temp > 60°C, humidity > 90%)
+
+3. **Handle Edge Cases**
+
+   * Missing readings → fill with previous valid value
+   * Malfunctioning sensors → exclude from averages
+
+---
+
+## **Sample Input Table (Simplified)**
+
+| sensor\_id | warehouse\_id | timestamp           | temperature | humidity | battery\_level | status      |
+| ---------- | ------------- | ------------------- | ----------- | -------- | -------------- | ----------- |
+| S1         | W1            | 2025-08-25 09:00:00 | 25.5        | 60       | 85             | OK          |
+| S1         | W1            | 2025-08-25 09:15:00 | 26.0        | 59       | 84             | OK          |
+| S2         | W1            | 2025-08-25 09:00:00 | -100.0      | 61       | 80             | MALFUNCTION |
+| S3         | W2            | 2025-08-25 09:05:00 | 22.3        | 58       | 90             | OK          |
+| S3         | W2            | 2025-08-25 09:20:00 | 23.0        | 57       | 89             | OK          |
+
+---
+
+## **Expected Output 1 – Daily Metrics Table**
+
+| warehouse\_id | date       | avg\_temp | min\_temp | max\_temp | avg\_humidity | malfunction\_pct | missing\_readings | avg\_battery |
+| ------------- | ---------- | --------- | --------- | --------- | ------------- | ---------------- | ----------------- | ------------ |
+| W1            | 2025-08-25 | 25.8      | 25.5      | 26.0      | 59.5          | 10%              | 1                 | 84.5         |
+| W2            | 2025-08-25 | 22.6      | 22.3      | 23.0      | 57.5          | 0%               | 0                 | 89.5         |
+
+---
+
+## **Expected Output 2 – Outlier Detection Table**
+
+| sensor\_id | warehouse\_id | date       | outlier\_type | value  |
+| ---------- | ------------- | ---------- | ------------- | ------ |
+| S2         | W1            | 2025-08-25 | Temp Low      | -100.0 |
+| S3         | W2            | 2025-08-25 | Humidity High | 95.0   |
+
+---
+
+## **Scalability & Realism**
+
+* Use **window functions** for gap detection
+* **Partition by date & warehouse** for big data scalability
+* Outlier detection logic should be configurable (e.g., thresholds from config table)
+* Could be extended to **streaming pipelines** with Spark Structured Streaming
 
 ---
